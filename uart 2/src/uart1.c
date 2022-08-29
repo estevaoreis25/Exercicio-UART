@@ -2,7 +2,8 @@
 #include <unistd.h>         //Used for UART
 #include <fcntl.h>          //Used for UART
 #include <termios.h> 
-#include <string.h>       //Used for UART
+#include <string.h>   
+#include "crc16.h"    //Used for UART
 
 int menu();
 void solicita_int();
@@ -87,11 +88,15 @@ void solicita_int(){
     unsigned char *p_tx_buffer;
 
     p_tx_buffer = &tx_buffer[0];
+    *p_tx_buffer++ = 0x01;
+    *p_tx_buffer++ = 0x23;
     *p_tx_buffer++ = 0xA1;
     *p_tx_buffer++ = 2;
     *p_tx_buffer++ = 6;
     *p_tx_buffer++ = 1;
     *p_tx_buffer++ = 6;
+    *p_tx_buffer++ = calcula_CRC(tx_buffer, 7);
+    p_tx_buffer++;
 
     printf("Buffers de memória criados!\n");
     
@@ -161,11 +166,13 @@ void solicita_float(){
     unsigned char *p_tx_buffer;
     
     p_tx_buffer = &tx_buffer[0];
+    *p_tx_buffer++ = 0x23;
     *p_tx_buffer++ = 0xA2;
     *p_tx_buffer++ = 2;
     *p_tx_buffer++ = 6;
     *p_tx_buffer++ = 1;
     *p_tx_buffer++ = 6;
+
 
     printf("Buffers de memória criados!\n");
     
