@@ -566,18 +566,19 @@ void enviar_string(){
     tcflush(uart0_filestream, TCIFLUSH);
     tcsetattr(uart0_filestream, TCSANOW, &options);
 
-    unsigned char tx_buffer[20];
+    unsigned char tx_buffer[255];
     unsigned char *p_tx_buffer;
-    unsigned char text[] = "OLA UART";
+    char text[] = "OLA UART";
     p_tx_buffer = &tx_buffer[0];
+    *p_tx_buffer++ = 0x01;
+    *p_tx_buffer++ = 0x16;
     *p_tx_buffer++ = 0xB3;
-    *p_tx_buffer++ = sizeof(text);
-    memcpy(p_tx_buffer, text, sizeof(text));
+    *p_tx_buffer++ = strlen(text);
+    memcpy(p_tx_buffer, text, strlen(text));
     p_tx_buffer+=sizeof(text);
-    *p_tx_buffer++ = 2;
-    *p_tx_buffer++ = 6;
-    *p_tx_buffer++ = 1;
-    *p_tx_buffer++ = 6;
+    short resposta = calcula_CRC(tx_buffer, 3+strlen(text));
+    memcpy(p_tx_buffer, &resposta, sizeof(resposta));
+    p_tx_buffer+=sizeof(resposta);
 
     printf("Buffers de memória criados!\n");
     
@@ -601,8 +602,8 @@ void enviar_string(){
     if (uart0_filestream != -1)
     {
         // Read up to 255 characters from the port if they are there
-        float rx_buffer;
-        int rx_length = read(uart0_filestream, (void*)&rx_buffer, sizeof(rx_buffer));      //Filestream, buffer to store in, number of bytes to read (max)
+        unsigned char rx_buffer[256];
+        int rx_length = read(uart0_filestream, (void*)rx_buffer, sizeof(rx_buffer));      //Filestream, buffer to store in, number of bytes to read (max)
         if (rx_length < 0)
         {
             printf("Erro na leitura.\n"); //An error occured (will occur if there are no bytes)
@@ -614,8 +615,24 @@ void enviar_string(){
         else
         {
             //Bytes received
-            //rx_buffer[rx_length] = '\0';
-            printf("%i Bytes lidos : %f\n", rx_length, rx_buffer);
+            rx_buffer[rx_length] = '\0';
+            for(int i =0; i < rx_length; i++ ){
+                printf("%x DEGUG RX: %d\n", rx_buffer[i], i);
+            }
+            char result[255];
+            memcpy(&result, &rx_buffer[4], rx_buffer[3]);
+            printf("%i Bytes lidos : %s\n", rx_length, result);
+
+            short crcbuffer;
+            memcpy(&crcbuffer, &rx_buffer[5+rx_buffer[3]], sizeof(short));
+            short crcr = calcula_CRC(rx_buffer, 5+rx_buffer[3]);
+
+
+            if(crcr == crcbuffer){
+                printf("CRC Validado: %i", crcbuffer);
+            }else{
+                printf("CRC INVALIDO. \nCRC buffer: %i\nCRC CALC: %i\n", crcbuffer, crcr);
+            }
         }
     }
 
